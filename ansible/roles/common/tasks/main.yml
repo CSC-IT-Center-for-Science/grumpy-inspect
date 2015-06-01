@@ -1,0 +1,35 @@
+- name: update key apt repositories
+  template: src=etc/apt/sources.list.j2
+            dest=/etc/apt/sources.list
+            backup=yes
+
+
+- name: refresh repository metadata install python-apt
+  raw: apt-get update
+
+- name: install python-apt
+  raw: apt-get install python-apt -y -q
+
+- name: tools for debugging installation
+  apt: pkg={{item}} state=present
+  with_items:
+    - dstat
+    - lsof
+    - bash-completion
+    - time
+
+- name: install dependencies
+  apt: pkg={{item}} state=present
+  with_items:
+    - git
+    - python
+    - python-pip
+    - python-dev
+    - python-virtualenv
+    - supervisor
+
+- include: create_users_and_groups.yml
+- include: setup_virtualenv.yml
+- include: fetch_application.yml
+- include: setup_supervisor.yml
+- include: setup_runtime_directories.yml
