@@ -16,7 +16,7 @@
 
 - name: Link static root for nginx
   file:
-    src={{ application_path }}/grumpy_inspect/static
+    src={{ application_path }}/{{ application_name }}/static
     dest={{ nginx_static_root }}
     state=link
     # mode=775

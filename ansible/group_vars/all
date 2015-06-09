@@ -14,6 +14,8 @@ git_repository: "https://github.com/CSC-IT-Center-for-Science/grumpy-inspect.git
 git_version: "master"
 
 apt_repository_url: "http://www.nic.funet.fi/pub/mirrors/archive.ubuntu.com/"
+#apt_repository_url: "http://fi.mirrors.archive.ubuntu.com/ubuntu/"
+#apt_repository_url: "mirror://mirrors.ubuntu.com/mirrors.txt"
 
 virtualenv_path: "/webapps/{{ application_name }}/venv"
 runtime_path: "/webapps/{{ application_name }}/run"
@@ -23,7 +25,7 @@ application_log_file: "{{ application_log_dir }}/gunicorn.log"
 celery_log_file: "{{ application_log_dir }}/celery.log"
 celerybeat_log_file: "{{ application_log_dir }}/celerybeat.log"
 domain: "localhost"
-application_name: "grumpy-inspect"
+application_name: "grumpy_inspect"
 application_user: "{{ application_name }}"
 application_group: "webapps"
 application_debug_logging: 'True'
@@ -34,6 +36,7 @@ application_database_uri: "sqlite:///{{ runtime_path }}/db.sqlite"
 application_m2m_credentials_dir: "/run/shm/{{ application_name }}"
 application_m2m_credentials_path: "{{ application_m2m_credentials_dir }}/creds"
 shared_folder_path: "/shared_folder"
+instance_data_dir: /var/spool/pb_instances
 proxy_bind_address: "127.0.0.1"
 proxy_bind_port: 8888
 proxy_bind_endpoint: "{{ proxy_bind_address }}:{{ proxy_bind_port }}"

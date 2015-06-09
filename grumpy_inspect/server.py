@@ -4,6 +4,7 @@ from flask_restful import Resource, Api
 app = Flask(__name__)
 api = Api(app)
 
+
 class Index(Resource):
     def get(self, token):
         return {'token': token}
