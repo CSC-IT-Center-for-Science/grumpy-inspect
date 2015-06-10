@@ -1,26 +1,8 @@
-import os
 import itertools
 import logging
-from novaclient.v2 import client
+from grumpy_inspect.connectors import get_openstack_nova_client
 
 logging.captureWarnings(True)
-
-
-def get_openstack_nova_client():
-    env = os.environ.copy()
-    required = set(('OS_AUTH_URL', 'OS_USERNAME', 'OS_PASSWORD', 'OS_TENANT_NAME'))
-    found = set(env.keys()).intersection(required)
-    if len(found) != len(required):
-        print "Some of following variables are not defined in your environment: %s" % ', '.join(required - found)
-        print "Source OpenStack RC file before running this script (available under Access & Security tab)"
-        print "e.g. source tenant_openrc.sh"
-        return
-
-    os_username = env['OS_USERNAME']
-    os_password = env['OS_PASSWORD']
-    os_tenant_name = env['OS_TENANT_NAME']
-    os_auth_url = env['OS_AUTH_URL']
-    return client.Client(os_username, os_password, os_tenant_name, os_auth_url)
 
 
 def main():
@@ -38,12 +20,10 @@ def main():
         for instance in cold_instances:
             print "\t- %s (%s, in state %s)" % (instance.name, instance.id, instance.status)
 
-
     def unsafe(x):
         for rule in x.rules:
             if rule['ip_range'].get('cidr', '').endswith("/0"):
                 return True
-
 
     def format_rules(rules):
         return ', '.join(["%s: %s %s-%s" % (rule['ip_protocol'], rule['ip_range'].get('cidr', '???'), rule['from_port'], rule['to_port']) for rule in rules])

@@ -2,14 +2,15 @@ import datetime
 import itertools
 import json
 import uuid
-
-from flask.ext.sqlalchemy import SQLAlchemy
+from sqlalchemy import Column, String, DateTime, PickleType, ForeignKey
+from sqlalchemy.orm import relationship
+from sqlalchemy.ext.declarative import declarative_base
 
 from grumpy_inspect import checkers
 
 MAX_SAMPLES = 10
 
-db = SQLAlchemy()
+Base = declarative_base()
 
 enabled_checkers = [
     checkers.always_idle,
@@ -25,13 +26,13 @@ def load_column(column):
     return value
 
 
-class Sample(db.Model):
+class Sample(Base):
     __tablename__ = 'samples'
-    id = db.Column(db.String(32), primary_key=True)
-    measured_at = db.Column(db.DateTime)
-    kind = db.Column(db.String(64))
-    value = db.Column(db.PickleType)
-    vm_id = db.Column(db.String, db.ForeignKey('vms.id'))
+    id = Column(String(32), primary_key=True)
+    measured_at = Column(DateTime)
+    kind = Column(String(64))
+    value = Column(PickleType)
+    vm_id = Column(String, ForeignKey('vms.id'))
 
     def __init__(self, kind, value):
         self.id = uuid.uuid4().hex
@@ -40,19 +41,23 @@ class Sample(db.Model):
         self.value = value
 
 
-class VirtualMachine(db.Model):
+class VirtualMachine(Base):
     __tablename__ = 'vms'
-    id = db.Column(db.String(32), primary_key=True)
-    user_notified_at = db.Column(db.DateTime)
-    user_confirmed_at = db.Column(db.DateTime)
-    samples = db.relationship("Sample")
+    id = Column(String(32), primary_key=True)
+    user_notified_at = Column(DateTime)
+    user_confirmed_at = Column(DateTime)
+    samples = relationship("Sample")
+
+    def __init__(self, id):
+        self.id = id
 
     def add_sample(self, kind, value):
         sample = Sample(kind, value)
         sample.vm_id = self.id
         self.samples.append(sample)
-        for sample in self.samples[:-MAX_SAMPLES]:
-            sample.delete()
+
+    def old_samples(self):
+        return self.samples[:-MAX_SAMPLES]
 
     def check_sample(self, sample):
         return any(f(sample) for f in enabled_checkers)
