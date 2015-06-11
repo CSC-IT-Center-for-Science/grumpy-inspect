@@ -29,4 +29,4 @@ def query_idle_vms():
 
 @app.task(name="grumpy_inspect.tasks.collect_usage")
 def collect_usage():
-    process_active_vms()
+    process_active_vms(config)

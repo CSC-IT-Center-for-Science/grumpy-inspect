@@ -5,17 +5,21 @@ from novaclient.v2 import client
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from grumpy_inspect.models import Base, VirtualMachine, Sample
+from grumpy_inspect.settings import BaseConfig
+from grumpy_inspect.models import Base, VirtualMachine
 
 """
 Connectors to data sources producing usage data
 """
 
+config = BaseConfig()
 MAX_CONCURRENT_REQUESTS = 5
 
-engine = create_engine('sqlite:////tmp/grumpy.db')
-Base.metadata.create_all(bind=engine)
-sm = sessionmaker(bind=engine, expire_on_commit=False)
+
+def create_database_session():
+    engine = create_engine('sqlite:////tmp/grumpy.db')
+    Base.metadata.create_all(bind=engine)
+    return sessionmaker(bind=engine, expire_on_commit=False)()
 
 
 def get_openstack_nova_client():
@@ -72,6 +76,7 @@ def process_active_vms():
     nc = get_openstack_nova_client()
     servers = nc.servers.list()
     vms = []
+    session = create_database_session()
     for server in servers:
         vm = session.query(VirtualMachine).filter(VirtualMachine.id == server.id).first()
         if not vm:
@@ -80,7 +85,7 @@ def process_active_vms():
 
 if __name__ == '__main__':
     vms = []
-    session = sm()
+    session = create_database_session()
     for i in range(10):
         vm = session.query(VirtualMachine).filter(VirtualMachine.id == i).first()
         if not vm:
