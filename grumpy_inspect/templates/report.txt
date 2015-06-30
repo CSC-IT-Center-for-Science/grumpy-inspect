@@ -1,0 +1,11 @@
+This is an automated notification about your virtual machines which are running on low utilization.
+
+Follow the link below and acknowledge the usage if these resources are still
+used. Acknowledging will suppress these notification for
+{{ config.LOW_UTILIZATION_GRACE_PERIOD / (24 * 3600) }} days. If the resources are not needed
+anymore, please release the resources.
+
+Usage report: {{ config.BASE_URL }}/#/notifications/{{ notification }}
+
+Follow links above to acknowledge that these resources are actually used to
+suppress these notifications.

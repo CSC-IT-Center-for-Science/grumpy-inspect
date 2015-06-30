@@ -1,0 +1,12 @@
+            <div ng-show="vms.length">
+                <h2>Confirm the utilization of your virtual machines</h2>
+                <table class="table">
+                    <thead><td>Virtual machine</td><td>Metric</td><td>Operation</td></thead>
+                    <tr ng-repeat="vm in vms">
+                        <td><a href="https://pouta.csc.fi/dashboard/project/instances/{{ vm.identifier }}/">{{ vm.identifier }}</a></td>
+                        <td>{{ vm.util_report }}</td>
+                        <td><input class="btn btn-primary" ng-click="ack(vm.identifier)" type="submit" value="Confirm"/></td>
+                    </tr>
+                </table>
+            </div>
+            <h3 ng-hide="vms.length">Nothing to report</h3>
