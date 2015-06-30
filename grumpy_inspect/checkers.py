@@ -1,4 +1,4 @@
-CPU_IDLE_THRESHOLD = 0.02
+CPU_IDLE_THRESHOLD = 0.05
 
 
 def always_idle(config):

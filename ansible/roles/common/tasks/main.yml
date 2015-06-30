@@ -22,11 +22,15 @@
   apt: pkg={{item}} state=present
   with_items:
     - git
-    - python
-    - python-pip
-    - python-dev
+    - python3
+    - python3-pip
+    - python3-dev
     - python-virtualenv
     - supervisor
+    - postgresql-common
+    - postgresql
+    - libpq-dev
+    - python-psycopg2
 
 - include: create_users_and_groups.yml
 - include: setup_virtualenv.yml

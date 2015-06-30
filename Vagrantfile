@@ -18,6 +18,7 @@ Vagrant.configure(2) do |config|
   # if using virtualbox, run on two vcpus
   config.vm.provider "virtualbox" do |v|
     v.cpus = 2
+    v.memory = 2048
   end
 
   # Enable provisioning with Ansible.
@@ -28,6 +29,7 @@ Vagrant.configure(2) do |config|
       "worker" => ["worker","single"],
       "all_groups:children" => ["www", "worker"]
     }
+    ansible.raw_arguments=["--extra-vars", "dbpassword=#{ENV['DBPASSWD']}"]
     ansible.verbose='vv'
   end
 

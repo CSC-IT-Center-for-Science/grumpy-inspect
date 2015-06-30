@@ -5,7 +5,6 @@
   with_items:
     - nginx
     - redis-server
-    - sqlite3
 
 - name: Set redis to listen to all interfaces
   lineinfile:
@@ -15,6 +14,24 @@
 
 - name: Set redis not to daemonize
   shell: sed -i 's/^\(daemonize\s*\)yes\s*$/\1no/g' /etc/redis/redis.conf
+
+- name: ensure that postgresql is started
+  service: name=postgresql state=running
+
+- name: ensure database is created
+  sudo: yes
+  sudo_user: postgres
+  postgresql_db: name={{ application_name }}
+
+- name: ensure user has access to database
+  sudo: yes
+  sudo_user: postgres
+  postgresql_user: db={{ dbname }} name={{ dbuser }} password={{ dbpassword }} priv=ALL
+
+- name: ensure user does not have unnecessary privilege
+  sudo: yes
+  sudo_user: postgres
+  postgresql_user: name={{ dbuser }} role_attr_flags=NOSUPERUSER,NOCREATEDB
 
 - name: Disable redis-server on boot and make sure it is stopped - supervisord takes care of this
   service: name=redis-server enabled=false state=stopped

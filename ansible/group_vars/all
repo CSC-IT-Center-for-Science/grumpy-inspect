@@ -50,6 +50,11 @@ nginx_error_log_file: "{{application_log_dir}}/nginx_error.log"
 nginx_ssl_crt: "/etc/nginx/ssl/server.crt"
 nginx_ssl_key: "/etc/nginx/ssl/server.key"
 
+# postgresql
+dbname: "{{ application_name }}"
+dbuser: "{{ application_name }}"
+dbpassword: "{{ dbpassword }}"
+
 # gunicorn
 gunicorn_num_workers: "{{ 2 * ansible_processor_vcpus }}"
 gunicorn_max_requests: 50

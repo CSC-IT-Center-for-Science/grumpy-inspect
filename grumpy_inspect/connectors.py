@@ -1,62 +1,35 @@
+"""
+Connectors to fetch meterings from data sources
+"""
 import asyncio
+import logging
 import random
-import os
 from novaclient.v2 import client
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-
 from grumpy_inspect.settings import BaseConfig
-from grumpy_inspect.models import Base, VirtualMachine
+from grumpy_inspect.models import db, VirtualMachine
 
-"""
-Connectors to data sources producing usage data
-"""
-
-config = BaseConfig()
 MAX_CONCURRENT_REQUESTS = 5
-
-
-def create_database_session():
-    engine = create_engine('sqlite:////tmp/grumpy.db')
-    Base.metadata.create_all(bind=engine)
-    return sessionmaker(bind=engine, expire_on_commit=False)()
+sem = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
+config = BaseConfig()
 
 
 def get_openstack_nova_client():
-    env = os.environ.copy()
-    required = set(('OS_AUTH_URL', 'OS_USERNAME', 'OS_PASSWORD', 'OS_TENANT_NAME'))
-    found = set(env.keys()).intersection(required)
-    if len(found) != len(required):
-        print("Some of following variables are not defined in your environment: %s" % ', '.join(required - found))
-        print("Source OpenStack RC file before running this script (available under Access & Security tab)")
-        print("e.g. source tenant_openrc.sh")
-
-    os_username = env['OS_USERNAME']
-    os_password = env['OS_PASSWORD']
-    os_tenant_name = env['OS_TENANT_NAME']
-    os_auth_url = env['OS_AUTH_URL']
-    return client.Client(os_username, os_password, os_tenant_name, os_auth_url)
+    """Return nova client object used to communicate with OpenStack API"""
+    return client.Client(config.OS_USERNAME, config.OS_PASSWORD, config.OS_TENANT_NAME, config.OS_AUTH_URL)
 
 
 @asyncio.coroutine
 def fetch_cpu_utilization(vm):
+    """
+    Produces dummy data
+    """
     with (yield from sem):
         wait_time = random.randint(1, 2)
         yield from asyncio.sleep(wait_time)
-        print("cpu for %s processed, took %s secs" % (vm, wait_time))
+        logging.debug("cpu for %s processed, took %s secs" % (vm, wait_time))
         val = random.random()
         vm.add_sample('cpu_util', val)
         return val
-
-
-def fetch_another_metric(vm):
-    with (yield from sem):
-        wait_time = random.randint(1, 2)
-        yield from asyncio.sleep(wait_time)
-        print("another metric for %s processed, took %s secs" % (vm, wait_time))
-        val = random.random()
-        vm.add_sample('another_metric', val)
-    return val
 
 
 collectors = (
@@ -66,42 +39,65 @@ collectors = (
 
 @asyncio.coroutine
 def collect_usage_for(vms):
+    """
+    Run metering functions asynchronously for each VirtualMachine in vms.
+    """
     for f in collectors:
         coroutines = [f(vm) for vm in vms]
-        results = yield from asyncio.gather(*coroutines)
-        print(results)
+        result = yield from asyncio.gather(*coroutines)
+        return result
 
 
-def process_active_vms():
+@asyncio.coroutine
+def process_active_vms(config):
+    """
+    Retrieve list of active virtual machines from OpenStack and call for
+    metering functions for each virtual machine.
+    """
     nc = get_openstack_nova_client()
     servers = nc.servers.list()
     vms = []
-    session = create_database_session()
     for server in servers:
-        vm = session.query(VirtualMachine).filter(VirtualMachine.id == server.id).first()
+        vm = VirtualMachine.query.filter_by(identifier=server.id).first()
         if not vm:
-            vm = VirtualMachine(server.id)
+            vm = VirtualMachine(server.id, server.user_id)
+            db.session.add(vm)
         vms.append(vm)
+    yield from collect_usage_for(vms)
+    db.session.commit()
+
+    # Purge old samples from DB
+    for vm in vms:
+        for old_sample in vm.old_samples():
+            db.session.delete(old_sample)
+
+    # Purge old VMs
+    vms_in_db = set(vm.identifier for vm in VirtualMachine.query.all())
+    active_vms = set(server.id for server in servers)
+    terminated_vms = vms_in_db - active_vms
+    for vm in vms:
+        if vm.identifier in terminated_vms:
+            for sample in vm.samples:
+                db.session.delete(sample)
+
+    db.session.commit()
+
+    for old_sample in vm.old_samples():
+        db.session.delete(old_sample)
+
+    db.session.commit()
+
+
+def process_connectors():
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(process_active_vms(config))
+
+
+def main():
+    process_connectors()
+    for vm in VirtualMachine.query.all():
+        print(vm.identifier, [x.value for x in vm.samples])
+
 
 if __name__ == '__main__':
-    vms = []
-    session = create_database_session()
-    for i in range(10):
-        vm = session.query(VirtualMachine).filter(VirtualMachine.id == i).first()
-        if not vm:
-            vm = VirtualMachine('%s' % i)
-        vms.append(vm)
-    sem = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(collect_usage_for(vms))
-
-    for vm in vms:
-        session.add(vm)
-        for sample in vm.old_samples():
-            print("Deleting")
-            session.delete(sample)
-
-        print(vm.id, vm.samples)
-    session.commit()
-    for vm in session.query(VirtualMachine).all():
-        print([x.value for x in vm.samples])
+    main()
